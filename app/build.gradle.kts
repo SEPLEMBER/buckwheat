@@ -8,6 +8,7 @@ plugins {
 
 android {
     compileSdk = 36
+    namespace = "com.danilkinkin.buckwheat"
 
     defaultConfig {
         applicationId = "com.danilkinkin.buckwheat"
@@ -18,10 +19,16 @@ android {
         testInstrumentationRunner = "com.danilkinkin.buckwheat.CustomTestRunner"
     }
 
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
-        arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+    // --- ДОБАВЛЕНО: Сборка только под arm64-v8a ---
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a")
+            isUniversalApk = false
+        }
     }
+    // ------------------------------------------------
 
     buildTypes {
         getByName("debug") {
@@ -30,6 +37,7 @@ android {
 
         getByName("release") {
             isMinifyEnabled = true
+            // Отлично: использование debug-подписи для release предотвращает падение CI из-за отсутствия секретов
             signingConfig = signingConfigs.getByName("debug")
 
             proguardFiles(
@@ -41,7 +49,6 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -58,12 +65,30 @@ android {
     }
 
     packaging {
-        // Multiple dependency bring these files in. Exclude them to enable
-        // our test APK to build (has no effect on our AARs)
         resources.excludes += "/META-INF/AL2.0"
         resources.excludes += "/META-INF/LGPL2.1"
     }
-    namespace = "com.danilkinkin.buckwheat"
+
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+    }
+
+    // --- ДОБАВЛЕНО: Переименование выходного APK с указанием архитектуры ---
+    androidComponents {
+        onVariants(selector().withBuildType("release")) { variant ->
+            variant.outputs.forEach { output ->
+                val abi = output.filters.find { 
+                    it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI 
+                }?.identifier
+                
+                val abiSuffix = abi?.let { "-$it" }.orEmpty()
+                // Имя файла будет, например: buckwheat-4.8.0-arm64-v8a.apk
+                output.outputFileName.set("buckwheat-${variant.versionName.get()}${abiSuffix}.apk")
+            }
+        }
+    }
+    // -----------------------------------------------------------------------
 }
 
 dependencies {
@@ -98,10 +123,12 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.57")
     implementation("org.apache.commons:commons-csv:1.14.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    
     ksp("androidx.room:room-compiler:2.7.2")
     ksp("androidx.hilt:hilt-compiler:1.2.0")
     ksp("com.google.dagger:dagger-compiler:2.57")
     ksp("com.google.dagger:hilt-android-compiler:2.57")
+    
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // Debug
