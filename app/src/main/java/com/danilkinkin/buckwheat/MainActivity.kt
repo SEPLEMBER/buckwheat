@@ -4,6 +4,7 @@ import OverrideLocalize
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.view.WindowManager // <-- ДОБАВЛЕНО: импорт для FLAG_SECURE
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
@@ -59,6 +60,10 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         val context = this.applicationContext
+        
+        // <-- ДОБАВЛЕНО: Защита от скриншотов и скрытие содержимого в меню недавних приложений
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        
         WindowCompat.setDecorFitsSystemWindows(window, false)
         installSplashScreen().setKeepOnScreenCondition { !isDone.value }
         lifecycleScope.launch {
